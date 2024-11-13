@@ -1,10 +1,15 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+
+void main() async {
+  await dotenv.load();
+
   runApp(const MyApp());
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
 }
@@ -35,10 +40,13 @@ class _RootPageState extends State<RootPage> {
       ScrollController(); // Add scroll controller
   List<String> messages = ["C:\\User>"];
   bool isCursorVisible = true;
+  final dio = Dio();
+  final link = dotenv.env['API_URL'];
 
   void _handleUserInput(String input) async {
     debugPrint('Msg Sent !!! ');
     if (input == "/clear") {
+      _clearResponse();
       setState(() {
         messages.clear();
         _controller.clear();
@@ -49,32 +57,66 @@ class _RootPageState extends State<RootPage> {
       setState(() {
         messages.removeLast();
         messages.add("C:\\User> $input");
+        //messages.add("ok\n");
+        //messages.add("C:\\User>");
       });
+
+      //_testResponse();
+
       String botResponse = await _sendMessageToBackend(input);
-      _scrollToBottom();
+      //_scrollToBottom();
       setState(() {
         messages.add(botResponse);
         messages.add("C:\\User>");
       });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+      
     }
+  }
 
-    // Scroll to the bottom when a new message is added
-    _scrollToBottom();
+  /* void _testResponse() async {
+    debugPrint('in function');
+    try {
+      var response = await dio.get($url);
+      debugPrint('****************');
+      debugPrint(response.statusCode.toString());
+      debugPrint(response.data.toString());
+    } on DioException catch (e) {
+      debugPrint(e.toString());
+    }
+  } */
+
+  void _clearResponse() async {
+    debugPrint('in function');
+    try {
+      var response = await dio.get("$link/clear");
+      debugPrint('****************');
+      debugPrint(response.statusCode.toString());
+      debugPrint(response.data.toString());
+    } on DioException catch (e) {
+      debugPrint(e.toString());
+    }
   }
 
   // Scroll to the bottom
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
+      final newOffset =
+          _scrollController.offset + 500; // Increase by 500 pixels
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
+        newOffset.clamp(
+          0.0,
+          _scrollController.position.maxScrollExtent,
+        ), // Ensure it doesn't exceed max scroll extent
+        duration: const Duration(milliseconds: 500),
         curve: Curves.easeOut,
       );
     }
   }
 
   Future<String> _sendMessageToBackend(String userMessage) async {
-    final url = Uri.parse('http://127.0.0.1:5000/chat');  // URL for Flask endpoint
+    final url =
+        Uri.parse('$link/chat'); // URL for Flask endpoint
     final headers = {"Content-Type": "application/json"};
     final body = json.encode({"message": userMessage});
 
@@ -95,6 +137,8 @@ class _RootPageState extends State<RootPage> {
   @override
   void initState() {
     super.initState();
+
+    _clearResponse();
 
     // Make the cursor blink
     Timer.periodic(const Duration(milliseconds: 500), (_) {
@@ -196,6 +240,8 @@ class _RootPageState extends State<RootPage> {
                       ),
                       style: const TextStyle(color: Colors.white),
                       cursorColor: Colors.white,
+                      minLines: 1, // Minimum height
+                      maxLines: null, // Allow expansion as needed
                     ),
                   ),
                   IconButton(
