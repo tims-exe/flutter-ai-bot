@@ -29,6 +29,7 @@ class RootPage extends StatefulWidget {
 
 class _RootPageState extends State<RootPage> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<String> messages = ["C:\\User>"];
   bool isCursorVisible = true;
 
@@ -47,6 +48,19 @@ class _RootPageState extends State<RootPage> {
         messages.add("C:\\User>");
       });
       _controller.clear();
+    }
+
+    // Scroll to the bottom when a new message is added
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
@@ -84,13 +98,13 @@ class _RootPageState extends State<RootPage> {
           children: [
             Expanded(
               child: ListView.builder(
+                controller: _scrollController,
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
-                  // Check if it's the last message (C:\User>) and if it's the one where the cursor should be
                   if (messages[index] == "C:\\User>" &&
                       index == messages.length - 1) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      padding: const EdgeInsets.only(bottom: 20),
                       child: Row(
                         children: [
                           Container(
@@ -153,14 +167,16 @@ class _RootPageState extends State<RootPage> {
                       ),
                       style: const TextStyle(color: Colors.white),
                       cursorColor: Colors.white,
+                      minLines: 1, // Minimum height
+                      maxLines: null, // Allow expansion as needed
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.send, color: Colors.white),
                     onPressed: () {
                       if (_controller.text.isNotEmpty) {
-                        _handleUserInput(_controller.text);
                         FocusScope.of(context).unfocus();
+                        _handleUserInput(_controller.text);
                       }
                     },
                   ),
