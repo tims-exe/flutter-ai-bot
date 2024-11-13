@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 void main() {
   runApp(const MyApp());
@@ -9,7 +10,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
@@ -29,23 +29,56 @@ class RootPage extends StatefulWidget {
 
 class _RootPageState extends State<RootPage> {
   final TextEditingController _controller = TextEditingController();
-
-  List<String> messages = ["Hello, I'm your chatbot! How can I help you?"];
+  List<String> messages = ["C:\\User>"];
+  bool isCursorVisible = true;
 
   void _handleUserInput(String input) {
-    setState(() {
-      messages.add("You: $input");
-      messages.add("Bot: ok");
+    if (input == "/clear") {
+      setState(() {
+        messages.clear();
+        _controller.clear();
+        messages.add("C:\\User>");
+      });
+    } else {
+      setState(() {
+        messages.removeLast();
+        messages.add("C:\\User> $input");
+        messages.add("ok\n");
+        messages.add("C:\\User>");
+      });
+      _controller.clear();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Make the cursor blink
+    Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (mounted) {
+        setState(() {
+          isCursorVisible = !isCursorVisible;
+        });
+      }
     });
-    _controller.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          '.bot',
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.black,
+      ),
       backgroundColor: Colors.black,
       body: Padding(
-        padding: const EdgeInsets.only(bottom: 50, left: 30, right: 30, top: 80),
+        padding:
+            const EdgeInsets.only(bottom: 50, left: 30, right: 30, top: 30),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -53,15 +86,46 @@ class _RootPageState extends State<RootPage> {
               child: ListView.builder(
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
+                  // Check if it's the last message (C:\User>) and if it's the one where the cursor should be
+                  if (messages[index] == "C:\\User>" &&
+                      index == messages.length - 1) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Row(
+                        children: [
+                          Container(
+                            alignment: Alignment.center,
+                            height: 30,
+                            child: Text(
+                              messages[index],
+                              style: const TextStyle(
+                                color: Colors.amber,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: isCursorVisible
+                                ? const Text(
+                                    ' |',
+                                    style: TextStyle(
+                                      color: Colors.amber,
+                                      fontSize: 20,
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5),
                     child: Text(
                       messages[index],
                       style: TextStyle(
-                        color: index.isEven
-                            ? Colors.white
-                            : Colors
-                                .blueAccent, // Alternate colors for user and bot
+                        color: index.isEven ? Colors.amber : Colors.white,
                         fontSize: 16,
                       ),
                     ),
@@ -95,7 +159,8 @@ class _RootPageState extends State<RootPage> {
                     icon: const Icon(Icons.send, color: Colors.white),
                     onPressed: () {
                       if (_controller.text.isNotEmpty) {
-                        _handleUserInput(_controller.text); // Handle user input
+                        _handleUserInput(_controller.text);
+                        FocusScope.of(context).unfocus();
                       }
                     },
                   ),
