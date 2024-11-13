@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -29,11 +31,13 @@ class RootPage extends StatefulWidget {
 
 class _RootPageState extends State<RootPage> {
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController =
+      ScrollController(); // Add scroll controller
   List<String> messages = ["C:\\User>"];
   bool isCursorVisible = true;
 
-  void _handleUserInput(String input) {
+  void _handleUserInput(String input) async {
+    debugPrint('Msg Sent !!! ');
     if (input == "/clear") {
       setState(() {
         messages.clear();
@@ -41,19 +45,24 @@ class _RootPageState extends State<RootPage> {
         messages.add("C:\\User>");
       });
     } else {
+      _controller.clear();
       setState(() {
         messages.removeLast();
         messages.add("C:\\User> $input");
-        messages.add("ok\n");
+      });
+      String botResponse = await _sendMessageToBackend(input);
+      _scrollToBottom();
+      setState(() {
+        messages.add(botResponse);
         messages.add("C:\\User>");
       });
-      _controller.clear();
     }
 
     // Scroll to the bottom when a new message is added
     _scrollToBottom();
   }
 
+  // Scroll to the bottom
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -61,6 +70,25 @@ class _RootPageState extends State<RootPage> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
+    }
+  }
+
+  Future<String> _sendMessageToBackend(String userMessage) async {
+    final url = Uri.parse('http://127.0.0.1:5000/chat');  // URL for Flask endpoint
+    final headers = {"Content-Type": "application/json"};
+    final body = json.encode({"message": userMessage});
+
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      debugPrint('got response');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['response'] ?? "Error: No response from bot";
+      } else {
+        return "Error: Failed to get response";
+      }
+    } catch (e) {
+      return "Error: $e";
     }
   }
 
@@ -98,9 +126,10 @@ class _RootPageState extends State<RootPage> {
           children: [
             Expanded(
               child: ListView.builder(
-                controller: _scrollController,
+                controller: _scrollController, // Attach the scroll controller
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
+                  // Check if it's the last message (C:\User>) and if it's the one where the cursor should be
                   if (messages[index] == "C:\\User>" &&
                       index == messages.length - 1) {
                     return Padding(
@@ -167,8 +196,6 @@ class _RootPageState extends State<RootPage> {
                       ),
                       style: const TextStyle(color: Colors.white),
                       cursorColor: Colors.white,
-                      minLines: 1, // Minimum height
-                      maxLines: null, // Allow expansion as needed
                     ),
                   ),
                   IconButton(
